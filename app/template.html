@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Normal CDF: piecewise-linear approximation lab</title>
+<meta name="description" content="Compare piecewise-linear approximations of the standard normal CDF, see their errors, and test them on process yield and defect rates.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<style>
+:root{
+  --paper:#f6f3ec; --card:#fffdf8; --ink:#1d2733; --ink2:#4a5563; --ink3:#7b8592;
+  --rule:#d9d2c3; --grid:#e8e2d4; --accent:#1b5e9a; --warn:#b54a1f; --ok:#2f7d4f;
+  --A:#1b5e9a; --B:#c0392b; --C:#d4892a; --D:#6c4a9e; --E:#1f8a70; --F:#7f8c8d; --P:#3d3d3d; --X:#1d2733;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --serif: "Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#14181d; --card:#1b2128; --ink:#e8e4da; --ink2:#b8b2a6; --ink3:#878177;
+    --rule:#2e3640; --grid:#252c34; --accent:#6fa8dc; --warn:#e58a5f; --ok:#6cc092;
+    --A:#6fa8dc; --B:#e57368; --C:#e6a957; --D:#a98bd6; --E:#56c2a0; --F:#a3adb3; --P:#c9c4ba; --X:#e8e4da;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14181d; --card:#1b2128; --ink:#e8e4da; --ink2:#b8b2a6; --ink3:#878177;
+  --rule:#2e3640; --grid:#252c34; --accent:#6fa8dc; --warn:#e58a5f; --ok:#6cc092;
+  --A:#6fa8dc; --B:#e57368; --C:#e6a957; --D:#a98bd6; --E:#56c2a0; --F:#a3adb3; --P:#c9c4ba; --X:#e8e4da;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans)}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+header{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;border-bottom:1px solid var(--rule);padding-bottom:18px;margin-bottom:22px}
+h1{font:600 clamp(1.6rem,3.4vw,2.35rem)/1.15 var(--serif);margin:0;letter-spacing:-.01em}
+.lede{color:var(--ink2);margin:.5rem 0 0;max-width:62ch}
+.formula{font:500 1.05rem var(--serif);color:var(--ink2);white-space:nowrap}
+h2{font:600 1.25rem/1.3 var(--serif);margin:0 0 .35rem}
+h3{font:600 1rem/1.3 var(--serif);margin:0 0 .5rem}
+.sub{color:var(--ink3);font-size:.9rem;margin:0 0 .9rem}
+.grid{display:grid;gap:18px}
+.g-main{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+.g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:860px){.g-main,.g-2{grid-template-columns:minmax(0,1fr)}header{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:18px 18px 16px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:999px;padding:5px 12px;font:500 .85rem var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.chip .sw{width:14px;height:3px;border-radius:2px;background:var(--c)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.chip[aria-pressed="true"] .sw{background:var(--card)}
+.zrow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin:4px 0 14px}
+.zrow label{font:600 1rem var(--serif)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=number]{width:6.2em;font:500 .95rem var(--mono);padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink)}
+.chart{width:100%;height:auto;display:block;touch-action:none;cursor:crosshair}
+.chart text{font-family:var(--sans);font-size:11px;fill:var(--ink3)}
+@media (max-width:560px){.chart text{font-size:17px}}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--ink2);margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block}
+.readout{display:grid;grid-template-columns:1fr auto;gap:6px 14px;font-size:.93rem;margin:0}
+.readout dt{color:var(--ink2)}
+.readout dd{margin:0;text-align:right;font:500 .95rem var(--mono)}
+.readout .big{font-size:1.35rem;color:var(--ink)}
+.neg{color:var(--warn)} .pos{color:var(--accent)}
+.sep{grid-column:1/-1;border-top:1px solid var(--rule);margin:6px 0}
+.note{font-size:.85rem;color:var(--ink3);margin:.8rem 0 0}
+.warn{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--ink2);border-bottom:1.5px solid var(--ink3)}
+td{font-family:var(--mono)}
+td:first-child{font-family:var(--sans)}
+.scroll{overflow-x:auto}
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+@media (max-width:560px){.form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.form label{display:flex;flex-direction:column;font-size:.82rem;color:var(--ink2);gap:4px}
+.form input{width:100%}
+.steps{margin:0;padding-left:1.2rem}
+.steps li{margin:.3rem 0}
+.kbd{font:500 .9rem var(--mono);background:var(--paper);border:1px solid var(--rule);border-radius:5px;padding:1px 6px}
+select{font:500 .9rem var(--sans);padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink)}
+footer{margin-top:28px;padding-top:16px;border-top:1px solid var(--rule);color:var(--ink3);font-size:.85rem}
+footer a{color:var(--accent)}
+.themebtn{border:1px solid var(--rule);background:transparent;color:var(--ink2);border-radius:6px;padding:5px 10px;font:500 .8rem var(--sans);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>How far off is a straight-line Φ(z)?</h1>
+    <p class="lede">Six piecewise-linear approximations of the standard normal CDF on 0 ≤ z ≤ 3, checked against a double-precision reference. Drag on any chart to move z.</p>
+  </div>
+  <div style="text-align:right">
+    <div class="formula">e(z) = Φ̂(z) − Φ(z)</div>
+    <button class="themebtn" id="theme" type="button">Toggle theme</button>
+  </div>
+</header>
+
+<div class="controls" id="chips" role="group" aria-label="Models shown"></div>
+
+<section class="grid g-main">
+  <div class="card">
+    <div class="zrow">
+      <label for="zr">z</label>
+      <input id="zr" type="range" min="-3" max="3" step="0.01" value="1.47">
+      <input id="zn" type="number" min="-3" max="3" step="0.01" value="1.47" aria-label="z value">
+    </div>
+    <h3>Cumulative probability</h3>
+    <svg class="chart" id="c1" viewBox="0 0 640 300" role="img" aria-label="Exact CDF and selected approximations"></svg>
+    <div class="legend" id="lg1"></div>
+  </div>
+  <div class="card">
+    <h3>At this z</h3>
+    <p class="sub">Model shown: <select id="focus" aria-label="Model for readout"></select></p>
+    <dl class="readout" id="ro"></dl>
+    <p class="note" id="ronote"></p>
+  </div>
+</section>
+
+<section class="grid g-2" style="margin-top:18px">
+  <div class="card">
+    <h3>Signed error e(z), percentage points</h3>
+    <svg class="chart" id="c2" viewBox="0 0 640 280" role="img" aria-label="Signed error of selected models"></svg>
+    <p class="note">Model A sits at or below zero everywhere: the normal CDF is concave for z &gt; 0, so every chord lies under the curve.</p>
+  </div>
+  <div class="card">
+    <h3>Relative error in the tail Q(z) = 1 − Φ(z), %</h3>
+    <svg class="chart" id="c3" viewBox="0 0 640 280" role="img" aria-label="Relative tail-probability error"></svg>
+    <p class="note">A 1 pp error in Φ near z = 2.5 doubles the defect rate. Use these models for yield, not for ppm.</p>
+  </div>
+</section>
+
+<section class="card" style="margin-top:18px">
+  <h2>Process yield check</h2>
+  <p class="sub">Enter specification limits and process parameters. The exact column uses the double-precision reference.</p>
+  <div class="form">
+    <label>Lower spec (LSL)<input type="number" id="lsl" value="-0.05" step="any"></label>
+    <label>Upper spec (USL)<input type="number" id="usl" value="0.05" step="any"></label>
+    <label>Process mean μ<input type="number" id="mu" value="0" step="any"></label>
+    <label>Std. deviation σ<input type="number" id="sd" value="0.02" step="any" min="0"></label>
+  </div>
+  <p class="note warn" id="formerr" style="margin:.2rem 0 .6rem"></p>
+  <div class="scroll"><table id="yt"></table></div>
+  <p class="note" id="ynote"></p>
+</section>
+
+<section class="card" style="margin-top:18px">
+  <h2>All models on 0 ≤ z ≤ 3</h2>
+  <p class="sub">Computed in your browser on 3,001 points. Values in probability units; multiply by 100 for percentage points.</p>
+  <div class="scroll"><table id="st"></table></div>
+</section>
+
+<section class="grid g-2" style="margin-top:18px">
+  <div class="card">
+    <h2>Field rule: 50 · 84 · 98 · 100</h2>
+    <ol class="steps">
+      <li>Remember Φ at z = 0, 1, 2, 3: <span class="kbd">0.50</span> <span class="kbd">0.84</span> <span class="kbd">0.98</span> <span class="kbd">1.00</span></li>
+      <li>Add slope × distance into the segment: <span class="kbd">0.34</span> on [0,1], <span class="kbd">0.14</span> on [1,2], <span class="kbd">0.02</span> on [2,3].</li>
+      <li>Negative z: use 1 − Φ̂(|z|). Two-sided coverage: 2Φ̂ − 1.</li>
+    </ol>
+    <p class="note">Worst case: 2.35 pp in Φ at z ≈ 1.45, so up to 4.7 pp in two-sided coverage.</p>
+  </div>
+  <div class="card">
+    <h2>Spreadsheet formula (Model C)</h2>
+    <p class="sub">Cell A2 holds z. Returns #N/A outside [−3, 3].</p>
+    <pre id="xl" style="white-space:pre-wrap;word-break:break-all;font:500 .82rem/1.5 var(--mono);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:10px;margin:0">=IF(ABS(A2)>3,NA(),0.5+SIGN(A2)*IF(ABS(A2)<=1,0.34*ABS(A2),IF(ABS(A2)<=2,0.34+0.14*(ABS(A2)-1),0.48+0.02*(ABS(A2)-2))))</pre>
+    <p class="note"><button class="themebtn" id="copy" type="button">Copy formula</button> <span id="copied"></span></p>
+  </div>
+</section>
+
+<footer>
+  Companion to the white paper “Low-Complexity Piecewise-Linear Approximations of the Standard Normal CDF for Engineering Calculations” by Ramiz Assaf, An-Najah National University (v2.0, 2026).
+  Built with help from Claude (Anthropic). Reference CDF: Hart/West double-precision algorithm, verified against SciPy to 2.2×10⁻¹⁶.
+  <a href="https://github.com/ramizassaf/normal-cdf-piecewise-linear">Source and data</a>.
+</footer>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- reference CDF (West 2005, after Hart 1968)
+function tailQ(x){ // returns P(Z > |x|) without cancellation
+  const a=Math.abs(x); if(a>37) return 0;
+  const e=Math.exp(-a*a/2);
+  if(a<7.07106781186547){
+    let n=3.52624965998911e-2*a+0.700383064443688;n=n*a+6.37396220353165;n=n*a+33.912866078383;
+    n=n*a+112.079291497871;n=n*a+221.213596169931;n=n*a+220.206867912376;
+    let d=8.83883476483184e-2*a+1.75566716318264;d=d*a+16.064177579207;d=d*a+86.7807322029461;
+    d=d*a+296.564248779674;d=d*a+637.333633378831;d=d*a+793.826512519948;d=d*a+440.413735824752;
+    return e*n/d;
+  }
+  let b=a+0.65;b=a+4/b;b=a+3/b;b=a+2/b;b=a+1/b;return e/b/2.506628274631;
+}
+const Phi = x => x>=0 ? 1-tailQ(x) : tailQ(x);
+const Qx  = x => x>=0 ? tailQ(x) : 1-tailQ(x);
+
+// ---------------------------------------------------------------- models on [0,3]
+const OPT = __MODELS__;
+const interp=(k,y)=>z=>{ if(z<=k[0])return y[0]; for(let i=1;i<k.length;i++){ if(z<=k[i]) return y[i-1]+(y[i]-y[i-1])*(z-k[i-1])/(k[i]-k[i-1]); } return y[y.length-1]; };
+const P0=[0.5,Phi(1),Phi(2),Phi(3)];
+const MODELS={
+  A:{name:"A · exact secant", short:"A", f:interp([0,1,2,3],P0)},
+  B:{name:"B · rounded (v1)", short:"B", f:z=> z<=1?0.5+0.34*z : z<=2?0.841+0.14*(z-1) : 0.977+0.02*(z-2), disc:true},
+  C:{name:"C · 50-84-98-100", short:"C", f:interp([0,1,2,3],[0.5,0.84,0.98,1.0])},
+  D:{name:"D · minimax, integer b", short:"D", f:interp(OPT.D.knots,OPT.D.values)},
+  E:{name:"E · minimax, free b", short:"E", f:interp(OPT.E.knots,OPT.E.values)},
+  F:{name:"F · two-decimal optimum", short:"F", f:interp(OPT.F.knots,OPT.F.values)},
+  P:{name:"Pólya (1949)", short:"Pólya", f:z=>0.5+0.5*Math.sqrt(1-Math.exp(-2*z*z/Math.PI))}
+};
+// symmetric extension; null outside [-3,3]
+function approx(key,z){ const a=Math.abs(z); if(key!=="P" && a>3+1e-12) return null; const v=MODELS[key].f(a); return z>=0?v:1-v; }
+
+// ---------------------------------------------------------------- state
+const state={z:1.47, shown:new Set(["A","C","E"]), focus:"C"};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=(v,d=4)=>v===null||!isFinite(v)?"n/a":v.toFixed(d);
+const sgn=(v,d=4)=>v===null||!isFinite(v)?"n/a":(v>=0?"+":"−")+Math.abs(v).toFixed(d);
+
+// ---------------------------------------------------------------- tiny SVG charting
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function niceTicks(lo,hi,n){const span=hi-lo,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),r=step0/mag;const step=(r<1.5?1:r<3?2:r<7?5:10)*mag;const t=[];for(let v=Math.ceil(lo/step)*step;v<=hi+1e-9;v+=step)t.push(+v.toFixed(10));return t;}
+function chart(svg,{x0=0,x1=3,y0,y1,series,zero=false,ylab="",yfmt=v=>v}){
+  svg.innerHTML="";
+  const W=640,H=+svg.getAttribute("viewBox").split(" ")[3],L=52,R=14,T=12,B=30;
+  const sx=x=>L+(x-x0)/(x1-x0)*(W-L-R), sy=y=>T+(1-(y-y0)/(y1-y0))*(H-T-B);
+  const g=el("g",{},svg);
+  for(const t of niceTicks(y0,y1,5)){el("line",{x1:L,x2:W-R,y1:sy(t),y2:sy(t),stroke:css("--grid"),"stroke-width":1},g);const tx=el("text",{x:L-8,y:sy(t)+4,"text-anchor":"end"},g);tx.textContent=yfmt(t);}
+  for(const t of niceTicks(x0,x1,6)){el("line",{y1:T,y2:H-B,x1:sx(t),x2:sx(t),stroke:css("--grid"),"stroke-width":1},g);const tx=el("text",{x:sx(t),y:H-B+18,"text-anchor":"middle"},g);tx.textContent=t.toFixed(1);}
+  if(zero&&y0<0&&y1>0) el("line",{x1:L,x2:W-R,y1:sy(0),y2:sy(0),stroke:css("--ink3"),"stroke-width":1},g);
+  el("line",{x1:L,x2:W-R,y1:H-B,y2:H-B,stroke:css("--ink3"),"stroke-width":1},g);
+  const xl=el("text",{x:W-R,y:H-4,"text-anchor":"end"},g);xl.textContent="z";
+  const clip="cl"+svg.id; const defs=el("defs",{},svg); const cp=el("clipPath",{id:clip},defs); el("rect",{x:L,y:T,width:W-L-R,height:H-T-B},cp);
+  const pg=el("g",{"clip-path":`url(#${clip})`},svg);
+  for(const s of series){
+    for(const seg of s.segments){
+      let d="";seg.forEach((p,i)=>{if(p[1]===null||!isFinite(p[1]))return;d+=(d?"L":"M")+sx(p[0]).toFixed(1)+","+sy(p[1]).toFixed(1);});
+      el("path",{d,fill:"none",stroke:s.color,"stroke-width":s.w||1.8,"stroke-dasharray":s.dash||"","stroke-linejoin":"round"},pg);
+    }
+  }
+  const zc=Math.min(Math.max(state.z,x0),x1);
+  el("line",{x1:sx(zc),x2:sx(zc),y1:T,y2:H-B,stroke:css("--ink"),"stroke-width":1,"stroke-dasharray":"3 3",opacity:.6},svg);
+  // pointer interaction
+  const setFrom=ev=>{const r=svg.getBoundingClientRect();const px=(ev.clientX-r.left)/r.width*W;let z=x0+(px-L)/(W-L-R)*(x1-x0);z=Math.max(-3,Math.min(3,Math.round(z*100)/100));if(state.z<0)z=-Math.abs(z);setZ(z);};
+  svg.onpointerdown=ev=>{svg.setPointerCapture(ev.pointerId);setFrom(ev);};
+  svg.onpointermove=ev=>{if(ev.buttons)setFrom(ev);};
+  return {sx,sy};
+}
+function sample(fn,disc){ // returns segments; split model B at its jumps
+  const pts=[],N=600; for(let i=0;i<=N;i++){const z=3*i/N;pts.push([z,fn(z)]);}
+  if(!disc) return [pts];
+  const s1=pts.filter(p=>p[0]<=1), s2=pts.filter(p=>p[0]>1&&p[0]<=2), s3=pts.filter(p=>p[0]>2);
+  s2.unshift([1.0000001,fn(1.0000001)]); s3.unshift([2.0000001,fn(2.0000001)]);
+  return [s1,s2,s3];
+}
+
+// ---------------------------------------------------------------- render
+function render(){
+  const keys=Object.keys(MODELS).filter(k=>state.shown.has(k));
+  // chart 1
+  const s1=[{segments:[sample(Phi)[0]],color:css("--X"),w:3}];
+  keys.forEach(k=>s1.push({segments:sample(MODELS[k].f,MODELS[k].disc),color:css("--"+k),dash:k==="P"?"5 4":""}));
+  const g1=chart(document.getElementById("c1"),{y0:0.48,y1:1.01,series:s1,yfmt:v=>v.toFixed(1)});
+  const za=Math.min(Math.abs(state.z),3);
+  el("circle",{cx:g1.sx(za),cy:g1.sy(Phi(za)),r:4,fill:css("--X")},document.getElementById("c1"));
+  document.getElementById("lg1").innerHTML=`<span><i style="background:${css("--X")}"></i>Exact Φ(z)</span>`+keys.map(k=>`<span><i style="background:${css("--"+k)}"></i>${MODELS[k].name}</span>`).join("");
+  // chart 2: signed error in pp
+  const s2=keys.map(k=>({segments:sample(z=>100*(MODELS[k].f(z)-Phi(z)),MODELS[k].disc),color:css("--"+k),dash:k==="P"?"5 4":""}));
+  chart(document.getElementById("c2"),{y0:-2.6,y1:1.6,series:s2,zero:true,yfmt:v=>v.toFixed(1)});
+  // chart 3: relative tail error
+  const s3=keys.map(k=>{const segs=sample(z=>{const q=Qx(z);return z<0.5?null:100*((1-MODELS[k].f(z))-q)/q;},MODELS[k].disc);return {segments:segs.map(s=>s.filter(p=>p[0]>=0.5)),color:css("--"+k),dash:k==="P"?"5 4":""};});
+  chart(document.getElementById("c3"),{x0:0.5,x1:3,y0:-110,y1:160,series:s3,zero:true,yfmt:v=>v.toFixed(0)});
+  readout();
+}
+function readout(){
+  const z=state.z,k=state.focus,ex=Phi(z),ap=approx(k,z);
+  const e=ap===null?null:ap-ex, q=Qx(Math.abs(z)), qh=ap===null?null:(z>=0?1-ap:ap);
+  const rq=qh===null?null:100*(qh-q)/q;
+  const cls=v=>v===null?"":v<0?"neg":"pos";
+  document.getElementById("ro").innerHTML=`
+    <dt>z</dt><dd>${z.toFixed(2)}</dd>
+    <dt>Exact Φ(z)</dt><dd class="big">${fmt(ex,5)}</dd>
+    <dt>${MODELS[k].short} Φ̂(z)</dt><dd class="big">${fmt(ap,5)}</dd>
+    <div class="sep"></div>
+    <dt>Signed error e</dt><dd class="${cls(e)}">${sgn(e,5)}</dd>
+    <dt>In percentage points</dt><dd class="${cls(e)}">${e===null?"n/a":sgn(100*e,2)+" pp"}</dd>
+    <dt>Relative CDF error</dt><dd>${e===null?"n/a":(100*Math.abs(e)/ex).toFixed(2)+" %"}</dd>
+    <div class="sep"></div>
+    <dt>Exact tail P(Z &gt; |z|)</dt><dd>${q.toExponential(3)}</dd>
+    <dt>Model tail</dt><dd>${qh===null?"n/a":qh.toExponential(3)}</dd>
+    <dt>Relative tail error</dt><dd class="${cls(rq)}">${rq===null||!isFinite(rq)?"n/a":sgn(rq,1)+" %"}</dd>
+    <dt>Two-sided coverage, exact</dt><dd>${(100*(2*Phi(Math.abs(z))-1)).toFixed(3)} %</dd>
+    <dt>Two-sided coverage, model</dt><dd>${ap===null?"n/a":(100*(2*approx(k,Math.abs(z))-1)).toFixed(3)+" %"}</dd>`;
+  document.getElementById("ronote").textContent = ap===null ? "This model covers |z| ≤ 3 only. Use exact computation." :
+    (k==="B" && (Math.abs(Math.abs(z)-1)<0.011||Math.abs(Math.abs(z)-2)<0.011)) ? "Model B jumps here: +0.001 at z = 1 and −0.004 at z = 2." : "";
+}
+function statsTable(){
+  const N=3000,rows=[];
+  for(const k of Object.keys(MODELS)){
+    let mx=0,at=0,sum=0,sabs=0,pos=-1;for(let i=0;i<=N;i++){const z=3*i/N,e=MODELS[k].f(z)-Phi(z);sum+=e;sabs+=Math.abs(e);if(Math.abs(e)>mx){mx=Math.abs(e);at=z;}if(e>pos)pos=e;}
+    const q=Qx(2.5),rq=100*((1-MODELS[k].f(2.5))-q)/q;
+    rows.push(`<tr><td>${MODELS[k].name}</td><td>${mx.toFixed(4)}</td><td>${at.toFixed(2)}</td><td>${sgn(sum/(N+1))}</td><td>${(sabs/(N+1)).toFixed(4)}</td><td>${sgn(Math.max(pos,0))}</td><td>${sgn(rq,1)} %</td></tr>`);
+  }
+  document.getElementById("st").innerHTML=`<thead><tr><th>Model</th><th>Max |e|</th><th>at z</th><th>Mean e</th><th>Mean |e|</th><th>Max e &gt; 0</th><th>Tail error at z = 2.5</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+}
+function yieldTable(){
+  const g=id=>parseFloat(document.getElementById(id).value);
+  const lsl=g("lsl"),usl=g("usl"),mu=g("mu"),sd=g("sd"),err=document.getElementById("formerr");
+  if(![lsl,usl,mu,sd].every(isFinite)){err.textContent="Enter a number in every field.";return;}
+  if(!(sd>0)){err.textContent="σ must be greater than zero.";return;}
+  if(!(usl>lsl)){err.textContent="USL must be greater than LSL.";return;}
+  err.textContent="";
+  const zu=(usl-mu)/sd, zl=(lsl-mu)/sd;
+  const Y=Phi(zu)-Phi(zl), ppm=(Qx(zu)+(1-Qx(zl)))*1e6;
+  const cp=(usl-lsl)/(6*sd), cpk=Math.min(usl-mu,mu-lsl)/(3*sd);
+  let rows=`<tr><td>Exact</td><td>${(100*Y).toFixed(4)} %</td><td>${Math.round(ppm).toLocaleString()}</td><td>reference</td><td>reference</td></tr>`;
+  for(const k of Object.keys(MODELS)){
+    const pu=approx(k,zu),pl=approx(k,zl);
+    if(pu===null||pl===null){rows+=`<tr><td>${MODELS[k].name}</td><td colspan="4" style="text-align:left;font-family:var(--sans)">outside |z| ≤ 3</td></tr>`;continue;}
+    const y=pu-pl, p=(1-y)*1e6;
+    rows+=`<tr><td>${MODELS[k].name}</td><td>${(100*y).toFixed(4)} %</td><td>${Math.round(p).toLocaleString()}</td><td>${sgn(100*(y-Y),2)} pp</td><td>${ppm>0?sgn(100*(p-ppm)/ppm,0)+" %":"n/a"}</td></tr>`;
+  }
+  document.getElementById("yt").innerHTML=`<thead><tr><th>Method</th><th>Yield</th><th>Out of spec (ppm)</th><th>Yield error</th><th>ppm error</th></tr></thead><tbody>${rows}</tbody>`;
+  document.getElementById("ynote").textContent=`z to USL = ${zu.toFixed(3)}, z to LSL = ${zl.toFixed(3)}, Cp = ${cp.toFixed(3)}, Cpk = ${cpk.toFixed(3)}.`;
+}
+
+// ---------------------------------------------------------------- wiring
+function setZ(z){state.z=z;document.getElementById("zr").value=z;document.getElementById("zn").value=z;render();}
+const chips=document.getElementById("chips"), focus=document.getElementById("focus");
+for(const k of Object.keys(MODELS)){
+  const b=document.createElement("button");b.className="chip";b.type="button";b.style.setProperty("--c",`var(--${k})`);
+  b.innerHTML=`<span class="sw"></span>${MODELS[k].name}`;b.setAttribute("aria-pressed",state.shown.has(k));
+  b.onclick=()=>{state.shown.has(k)?state.shown.delete(k):state.shown.add(k);b.setAttribute("aria-pressed",state.shown.has(k));render();};
+  chips.appendChild(b);
+  const o=document.createElement("option");o.value=k;o.textContent=MODELS[k].name;if(k===state.focus)o.selected=true;focus.appendChild(o);
+}
+focus.onchange=()=>{state.focus=focus.value;readout();};
+document.getElementById("zr").oninput=e=>setZ(parseFloat(e.target.value));
+document.getElementById("zn").oninput=e=>{const v=parseFloat(e.target.value);if(isFinite(v))setZ(Math.max(-3,Math.min(3,v)));};
+["lsl","usl","mu","sd"].forEach(id=>document.getElementById(id).oninput=yieldTable);
+document.getElementById("theme").onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";render();};
+document.getElementById("copy").onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById("xl").textContent);document.getElementById("copied").textContent="Copied.";}catch(e){document.getElementById("copied").textContent="Select the text and copy it manually.";}};
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",render);
+render();statsTable();yieldTable();
+</script>
+</body>
+</html>
