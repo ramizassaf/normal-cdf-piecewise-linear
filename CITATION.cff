@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "Low-Complexity Piecewise-Linear Approximations of the Standard Normal CDF for Engineering Calculations: An Accuracy-Complexity Analysis"
+type: report
+version: "2.0"
+date-released: "2026-10-03"
+authors:
+  - family-names: Assaf
+    given-names: Ramiz
+    affiliation: "Department of Industrial Engineering, An-Najah National University, Nablus, Palestine"
+    email: ramizassaf@najah.edu
+repository-code: "https://github.com/ramizassaf/normal-cdf-piecewise-linear"
+license: MIT
+keywords:
+  - normal distribution
+  - piecewise-linear approximation
+  - minimax approximation
+  - process capability
+  - engineering education
